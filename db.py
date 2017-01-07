@@ -49,6 +49,38 @@ class Cassandra(object):
             WHERE username = ?
             """)
 
+        self._q_following_add = self.session.prepare("""
+            INSERT INTO following_by_user (username, following)
+            VALUES (?, ?)
+            """)
+        self._q_following_delete = self.session.prepare("""
+            DELETE
+            FROM following_by_user
+            WHERE username = ?
+            AND following = ?
+            """)
+        self._q_following_get = self.session.prepare("""
+            SELECT following
+            FROM following_by_user
+            WHERE username = ?
+            """)
+
+        self._q_follower_add = self.session.prepare("""
+            INSERT INTO followers_by_user (username, follower)
+            VALUES (?, ?)
+            """)
+        self._q_follower_delete = self.session.prepare("""
+            DELETE
+            FROM followers_by_user
+            WHERE username = ?
+            AND follower = ?
+            """)
+        self._q_followers_get = self.session.prepare("""
+            SELECT follower
+            FROM followers_by_user
+            WHERE username = ?
+            """)
+
     def user_update(self, username, params):
         stmt = self.session.prepare("""
             UPDATE users SET {}
@@ -62,7 +94,7 @@ class Cassandra(object):
         self._execute(stmt, vals)
 
     def user_get(self, username):
-        result = self.session.execute(self._q_user_get, [username])
+        result = self._execute(self._q_user_get, [username])
         try:
             return result[0]
         except IndexError:
@@ -77,6 +109,21 @@ class Cassandra(object):
             return (result[0].password == password)
         except IndexError:
             return False
+
+    def follow_user(self, username, user_to_follow):
+        self._execute(self._q_following_add, [username, user_to_follow])
+        self._execute(self._q_follower_add, [user_to_follow, username])
+
+    def unfollow_user(self, username, user_to_unfollow):
+        self._execute(self._q_following_delete, [username, user_to_unfollow])
+        self._execute(self._q_follower_delete, [user_to_unfollow, username])
+
+    def following_get(self, username):
+        return self._execute(self._q_following_get, [username])
+
+    def followers_get(self, username):
+        return self._execute(self._q_followers_get, [username])
+
 
 if __name__ == '__main__':
     c = Cassandra()

@@ -24,8 +24,13 @@ class Cassandra(object):
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
 
+        self._prepare_statements()
+
     def _prepare_statements(self):
-        pass
+        self._q_user_get = self.session.prepare("""
+            SELECT * FROM users
+            WHERE username = ?
+            """)
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -39,12 +44,20 @@ class Cassandra(object):
 
         self.session.execute(stmt, vals)
 
+    def user_get(self, username):
+        result = self.session.execute(self._q_user_get, [username])
+        try:
+            return result[0]
+        except IndexError:
+            return None
+
 
 if __name__ == '__main__':
     c = Cassandra()
 
     c.user_update('mescam', {'bio': 'to ja', 'password': 'niety'})
 
-
+    print(c.user_get('mescam'))
+    print(c.user_get('admin'))
 
 

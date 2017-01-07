@@ -22,13 +22,28 @@ class Cassandra(object):
         auth_provider = PlainTextAuthProvider(username=uname, 
                                               password=passw)
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
-        self.session = cluster.connect(kspace)
+        self.session = self.cluster.connect(kspace)
 
     def _prepare_statements(self):
         pass
 
-    def update_user(self, username, params):
-        pass
+    def user_update(self, username, params):
+        stmt = self.session.prepare("""
+            UPDATE users SET {}
+            WHERE username = ?
+            """.format(', '.join(["{} = ?".format(p) for p in params]))
+        )
+        print(stmt)
+        vals = list(params.values())
+        vals.append(username)
+
+        self.session.execute(stmt, vals)
+
+
+if __name__ == '__main__':
+    c = Cassandra()
+
+    c.user_update('mescam', {'bio': 'to ja', 'password': 'niety'})
 
 
 

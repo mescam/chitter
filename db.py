@@ -31,6 +31,10 @@ class Cassandra(object):
             SELECT * FROM users
             WHERE username = ?
             """)
+        self._q_user_verify_password = self.session.prepare("""
+            SELECT password FROM users
+            WHERE username = ?
+            """)
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -51,6 +55,15 @@ class Cassandra(object):
         except IndexError:
             return None
 
+    def user_verify_password(self, username, password):
+        result = self.session.execute(
+            self._q_user_verify_password,
+            [username]
+        )
+        try:
+            return (result[0].password == password)
+        except IndexError:
+            return False
 
 if __name__ == '__main__':
     c = Cassandra()
@@ -59,5 +72,6 @@ if __name__ == '__main__':
 
     print(c.user_get('mescam'))
     print(c.user_get('admin'))
-
+    print(c.user_verify_password('mescam', 'niety'))
+    print(c.user_verify_password('mescam', 'wonsz-zeczny'))
 

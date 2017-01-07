@@ -3,19 +3,23 @@ import os
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 
-class CassandraConfigException(Exception):
+class CassandraException(Exception):
     pass
 
 class Cassandra(object):
     
     def __init__(self):
+        self._connect()
+        self._prepare_statements()
+
+    def _connect(self):
         try:
             cpoints = os.environ['CASS_CONTACTPOINTS'].split(',')
             uname = os.environ['CASS_UNAME']
             passw = os.environ['CASS_PASS']
             kspace = os.environ['CASS_KEYSPACE']
         except IndexError:
-            raise CassandraConfigException(
+            raise CassandraException(
                 "No Cassandra configuration found"
             )
 
@@ -23,8 +27,17 @@ class Cassandra(object):
                                               password=passw)
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
-
-        self._prepare_statements()
+    
+    
+    def _execute(self, *args, **kwargs):
+        i = 0
+        while i < 3:
+            try:
+                return self.session.execute(*args, **kwargs)
+            except cassandra.cluster.NoHostAvailable:
+                self._connect()
+                i += 1
+        raise CassandraException("No host available")
 
     def _prepare_statements(self):
         self._q_user_get = self.session.prepare("""
@@ -46,7 +59,7 @@ class Cassandra(object):
         vals = list(params.values())
         vals.append(username)
 
-        self.session.execute(stmt, vals)
+        self._execute(stmt, vals)
 
     def user_get(self, username):
         result = self.session.execute(self._q_user_get, [username])
@@ -56,7 +69,7 @@ class Cassandra(object):
             return None
 
     def user_verify_password(self, username, password):
-        result = self.session.execute(
+        result = self._execute(
             self._q_user_verify_password,
             [username]
         )

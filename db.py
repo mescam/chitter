@@ -52,7 +52,16 @@ class Cassandra(object):
             SELECT * FROM chitts_by_following
             WHERE follower = ? AND p_time = ?
             """)
+        self._q_chitts_by_user = self.session.prepare("""
+            SELECT * FROM chitts_by_user
+            WHERE username = ? AND p_time = ?
+            """)
 
+        self._q_chitts_by_tag = self.session.prepare("""
+            SELECT * FROM chitts_by_tag
+            WHERE tag = ? AND p_time = ?
+            """)
+    
     def user_update(self, username, params):
         stmt = self.session.prepare("""
             UPDATE users SET {}
@@ -86,6 +95,13 @@ class Cassandra(object):
         return self._execute(self._q_chitts_by_following,
             [follower, p_time])
 
+    def chitts_by_user(self, username, p_time):
+        return self._execute(self._q_chitts_by_user,
+            [username, p_time])
+
+    def chitts_by_tag(self, tag, p_time):
+        return self._execute(self._q_chitts_by_tag,
+            [tag, p_time])
 
 
 if __name__ == '__main__':

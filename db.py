@@ -48,6 +48,10 @@ class Cassandra(object):
             SELECT password FROM users
             WHERE username = ?
             """)
+        self._q_chitts_by_following = self.session.prepare("""
+            SELECT * FROM chitts_by_following
+            WHERE follower = ? AND p_time = ?
+            """)
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -77,6 +81,12 @@ class Cassandra(object):
             return (result[0].password == password)
         except IndexError:
             return False
+
+    def chitts_by_following(self, follower, p_time):
+        return self._execute(self._q_chitts_by_following,
+            [follower, p_time])
+
+
 
 if __name__ == '__main__':
     c = Cassandra()

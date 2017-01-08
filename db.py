@@ -135,8 +135,8 @@ class Cassandra(object):
             DELETE
             FROM likes_by_user
             WHERE username = ?
-            AND p_time = ?
             AND time = ?
+            AND p_time = ?
             """)
         self._q_likes_by_chitt_add = self.session.prepare("""
             INSERT INTO likes_by_chitt (time, username)
@@ -210,6 +210,10 @@ class Cassandra(object):
         return self._execute(self._q_chitts_by_tag,
             [tag, p_time])
 
+    def chitts_public(self, p_time):
+        return self._execute(self._q_chitts_by_following,
+            [PUBLIC_USER, p_time])
+
     def chitt_add(self, username, body):
         current_time = datetime.now()
         time = uuid_from_time(current_time)
@@ -265,3 +269,4 @@ if __name__ == '__main__':
     c.follow_user('jacek', 'kuba')
     c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    print(list(c.chitts_public('2017-1')))

@@ -1,11 +1,11 @@
 import os
 
 from datetime import datetime
+from uuid import UUID
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.util import uuid_from_time
-
-from utils import parse_tags
+from cassandra.util import uuid_from_time, datetime_from_uuid1
+from utils import parse_tags, partition_time
 import async_tasks
 
 PUBLIC_USER = '_public_'
@@ -84,15 +84,18 @@ class Cassandra(object):
             VALUES (?, ?, ?, ?, 0, ?)
             """)
         self._q_chitts_by_following = self.session.prepare("""
-            SELECT * FROM chitts_by_following
+            SELECT username, body, time, likes
+            FROM chitts_by_following
             WHERE follower = ? AND p_time = ?
             """)
         self._q_chitts_by_user = self.session.prepare("""
-            SELECT * FROM chitts_by_user
+            SELECT username, body, time, likes
+            FROM chitts_by_user
             WHERE username = ? AND p_time = ?
             """)
         self._q_chitts_by_tag = self.session.prepare("""
-            SELECT * FROM chitts_by_tag
+            SELECT username, body, time, likes
+            FROM chitts_by_tag
             WHERE tag = ? AND p_time = ?
             """)
 
@@ -132,6 +135,28 @@ class Cassandra(object):
             SELECT COUNT(*)
             FROM likes_by_chitt
             WHERE time = ?
+            """)
+
+        self._q_likes_by_user_add = self.session.prepare("""
+            INSERT INTO likes_by_user (username, time, p_time)
+            VALUES (?, ?, ?)
+            """)
+        self._q_likes_by_user_delete = self.session.prepare("""
+            DELETE
+            FROM likes_by_user
+            WHERE username = ?
+            AND time = ?
+            AND p_time = ?
+            """)
+        self._q_likes_by_chitt_add = self.session.prepare("""
+            INSERT INTO likes_by_chitt (time, username)
+            VALUES (?, ?)
+            """)
+        self._q_likes_by_chitt_delete = self.session.prepare("""
+            DELETE
+            FROM likes_by_chitt
+            WHERE time = ?
+            AND username = ?
             """)
 
 
@@ -196,10 +221,14 @@ class Cassandra(object):
         return self._execute(self._q_chitts_by_tag,
             [tag, p_time])
 
+    def chitts_public(self, p_time):
+        return self._execute(self._q_chitts_by_following,
+            [PUBLIC_USER, p_time])
+
     def chitt_add(self, username, body):
         current_time = datetime.now()
         time = uuid_from_time(current_time)
-        p_time = str(current_time.isocalendar()[:2])
+        p_time = partition_time(current_time)
 
         self._execute(self._q_chitts_by_user_add,
             [username, body, time, p_time])
@@ -217,6 +246,22 @@ class Cassandra(object):
         for t in tags:
             self._execute(self._q_chitts_by_tag_add,
                 [t, username, body, time, p_time])
+
+    def chitt_like(self, username, time_string):
+        time = UUID(time_string)
+        p_time = partition_time(datetime_from_uuid1(time))
+        self._execute(self._q_likes_by_user_add,
+            [username, time, p_time])
+        self._execute(self._q_likes_by_chitt_add,
+            [time, username])
+
+    def chitt_unlike(self, username, time_string):
+        time = UUID(time_string)
+        p_time = partition_time(datetime_from_uuid1(time))
+        self._execute(self._q_likes_by_user_delete,
+            [username, time, p_time])
+        self._execute(self._q_likes_by_chitt_delete,
+            [time, username])
 
     def likes_count_update(self, username, uuid):
         rs = self._execute(self._q_likes_count_by_chitt,
@@ -241,3 +286,6 @@ if __name__ == '__main__':
     import uuid
     print(c.likes_count_update('aa', uuid.UUID('5bf90440-d5b2-11e6-a409-6d2c86545d91')))
     async_tasks.count_likes('12', 'lel')
+    c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    print(list(c.chitts_public('2017-1')))

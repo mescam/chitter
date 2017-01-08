@@ -4,7 +4,9 @@ from datetime import datetime
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time
+
 from utils import parse_tags
+import async_tasks
 
 PUBLIC_USER = '_public_'
 
@@ -126,6 +128,12 @@ class Cassandra(object):
             WHERE username = ?
             """)
 
+        self._q_likes_count_by_chitt = self.session.prepare("""
+            SELECT COUNT(*)
+            FROM likes_by_chitt
+            WHERE time = ?
+            """)
+
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -210,6 +218,11 @@ class Cassandra(object):
             self._execute(self._q_chitts_by_tag_add,
                 [t, username, body, time, p_time])
 
+    def likes_count_update(self, username, uuid):
+        rs = self._execute(self._q_likes_count_by_chitt,
+                           [uuid])[0]
+        return rs
+
 
 if __name__ == '__main__':
     c = Cassandra.gi()
@@ -224,3 +237,7 @@ if __name__ == '__main__':
     print(list(c.followers_by_user('kuba')))
     c.follow_user('wacek', 'kuba')
     c.follow_user('jacek', 'kuba')
+
+    import uuid
+    print(c.likes_count_update('aa', uuid.UUID('5bf90440-d5b2-11e6-a409-6d2c86545d91')))
+    async_tasks.count_likes('12', 'lel')

@@ -289,22 +289,23 @@ class Cassandra(object):
             self._execute(self._q_chitts_by_tag_add,
                 [t, username, body, time, p_time])
 
-    def like_add(self, username, time_string):
+    def like_add(self, username, chitt_author, time_string):
         time = UUID(time_string)
         p_time = partition_time(datetime_from_uuid1(time))
         self._execute(self._q_likes_by_user_add,
             [username, time, p_time])
         self._execute(self._q_likes_by_chitt_add,
-        [time, username])
+            [time, username])
+        async_tasks.count_likes(chitt_author, time_string)
 
-
-    def like_delete(self, username, time_string):
+    def like_delete(self, username, chitt_author, time_string):
         time = UUID(time_string)
         p_time = partition_time(datetime_from_uuid1(time))
         self._execute(self._q_likes_by_user_delete,
             [username, time, p_time])
         self._execute(self._q_likes_by_chitt_delete,
             [time, username])
+        async_tasks.count_likes(chitt_author, time_string)
 
     def likes_by_user(self, username, p_time):
         return self._execute(self._q_likes_by_user,
@@ -362,11 +363,9 @@ if __name__ == '__main__':
     print(list(c.followers_by_user('kuba')))
     c.follow_user('wacek', 'kuba')
     c.follow_user('jacek', 'kuba')
-    c.like_add('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     print(list(c.likes_by_user('wacek', '2017-1')))
     print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
-    c.like_delete('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    c.like_delete('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     async_tasks.count_likes('12', 'lel')
-    #c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
-    #c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     print(list(c.chitts_public('2017-1')))

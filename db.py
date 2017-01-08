@@ -1,7 +1,9 @@
 import os
 
+from datetime import datetime
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
+from cassandra.util import uuid_from_time
 
 class CassandraException(Exception):
     pass
@@ -47,6 +49,11 @@ class Cassandra(object):
         self._q_user_verify_password = self.session.prepare("""
             SELECT password FROM users
             WHERE username = ?
+            """)
+
+        self._q_chitts_by_user_add = self.session.prepare("""
+            INSERT INTO chitts_by_user (username, body, time, likes, p_time)
+            VALUES (?, ?, ?, 0, ?)
             """)
         self._q_chitts_by_following = self.session.prepare("""
             SELECT * FROM chitts_by_following
@@ -148,6 +155,16 @@ class Cassandra(object):
     def chitts_by_tag(self, tag, p_time):
         return self._execute(self._q_chitts_by_tag,
             [tag, p_time])
+
+    def add_chitt(self, username, body):
+        current_time = datetime.now()
+        time = uuid_from_time(current_time)
+        p_time = str(current_time.isocalendar()[:2])
+
+        self.execute(self._q_chitts_by_user_add,
+            [username, body, time, p_time])
+
+        followers = 
 
 
 if __name__ == '__main__':

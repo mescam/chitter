@@ -4,6 +4,7 @@ from datetime import datetime
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time
+from utils import parse_tags
 
 class CassandraException(Exception):
     pass
@@ -55,8 +56,19 @@ class Cassandra(object):
             """)
 
         self._q_chitts_by_user_add = self.session.prepare("""
-            INSERT INTO chitts_by_user (username, body, time, likes, p_time)
+            INSERT INTO chitts_by_user
+                (username, body, time, likes, p_time)
             VALUES (?, ?, ?, 0, ?)
+            """)
+        self._q_chitts_by_following_add = self.session.prepare("""
+            INSERT INTO chitts_by_following
+                (follower, username, body, time, likes, p_time)
+            VALUES (?, ?, ?, ?, 0, ?)
+            """)
+        self._q_chitts_by_tag_add = self.session.prepare("""
+            INSERT INTO chitts_by_tag
+                (tag, username, body, time, likes, p_time)
+            VALUES (?, ?, ?, ?, 0, ?)
             """)
         self._q_chitts_by_following = self.session.prepare("""
             SELECT * FROM chitts_by_following
@@ -170,10 +182,18 @@ class Cassandra(object):
         time = uuid_from_time(current_time)
         p_time = str(current_time.isocalendar()[:2])
 
-        self.execute(self._q_chitts_by_user_add,
+        self._execute(self._q_chitts_by_user_add,
             [username, body, time, p_time])
 
-        followers = 
+        followers = list(self.followers_by_user(username))
+        for f in followers:
+            self._execute(self._q_chitts_by_following_add,
+                [f, username, body, time, p_time])
+
+        tags = parse_tags(body)
+        for t in tags:
+            self._execute(self._q_chitts_by_tag_add,
+                [t, username, body, time, p_time])
 
 
 if __name__ == '__main__':
@@ -187,3 +207,5 @@ if __name__ == '__main__':
     print(c.user_verify_password('mescam', 'wonsz-zeczny'))
     print(list(c.following_by_user('jacek')))
     print(list(c.followers_by_user('kuba')))
+    c.follow_user('wacek', 'kuba')
+    c.follow_user('jacek', 'kuba')

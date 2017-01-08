@@ -332,6 +332,16 @@ class Cassandra(object):
                 (likes, follower, p_time, time))
             )
 
+
+        queries.append(
+            (self._q_update_likes_in_chitts_by_following,
+            (likes, username, p_time, time))
+        )
+        queries.append(
+            (self._q_update_likes_in_chitts_by_following,
+            (likes, PUBLIC_USER, p_time, time))
+        )
+
         tags = parse_tags(
             self._execute(
                 self._q_get_chitt_body,
@@ -341,7 +351,7 @@ class Cassandra(object):
         for t in tags:
             queries.append((
                 self._q_update_likes_in_chitts_by_tag,
-                (likes, tag, p_time, time)))
+                (likes, t, p_time, time)))
 
         results = execute_concurrent(
             self.session,
@@ -366,6 +376,6 @@ if __name__ == '__main__':
     c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     print(list(c.likes_by_user('wacek', '2017-1')))
     print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
-    c.like_delete('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
-    async_tasks.count_likes('12', 'lel')
+    #c.like_delete('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    #async_tasks.count_likes('12', 'lel')
     print(list(c.chitts_public('2017-1')))

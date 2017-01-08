@@ -6,6 +6,7 @@ from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time, datetime_from_uuid1
 from utils import parse_tags, partition_time
+import async_tasks
 
 PUBLIC_USER = '_public_'
 
@@ -130,6 +131,12 @@ class Cassandra(object):
             WHERE username = ?
             """)
 
+        self._q_likes_count_by_chitt = self.session.prepare("""
+            SELECT COUNT(*)
+            FROM likes_by_chitt
+            WHERE time = ?
+            """)
+
         self._q_likes_by_user_add = self.session.prepare("""
             INSERT INTO likes_by_user (username, time, p_time)
             VALUES (?, ?, ?)
@@ -162,6 +169,7 @@ class Cassandra(object):
             FROM likes_by_chitt
             WHERE time = ?
             """)
+
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -275,6 +283,12 @@ class Cassandra(object):
         return self._execute(self._q_likes_by_chitt,
             [time])
 
+    def likes_count_update(self, username, time_string):
+        time = UUID(time_string)
+        rs = self._execute(self._q_likes_count_by_chitt,
+                           [time])[0]
+        return rs
+
 
 if __name__ == '__main__':
     c = Cassandra.gi()
@@ -293,4 +307,7 @@ if __name__ == '__main__':
     print(list(c.likes_by_user('wacek', '2017-1')))
     print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
     c.like_delete('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    async_tasks.count_likes('12', 'lel')
+    c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     print(list(c.chitts_public('2017-1')))

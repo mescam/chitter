@@ -141,6 +141,12 @@ class Cassandra(object):
             AND time = ?
             AND p_time = ?
             """)
+        self._q_likes_by_user = self.session.prepare("""
+            SELECT username, time
+            FROM likes_by_user
+            WHERE username = ?
+            AND p_time = ?
+            """)
         self._q_likes_by_chitt_add = self.session.prepare("""
             INSERT INTO likes_by_chitt (time, username)
             VALUES (?, ?)
@@ -150,6 +156,11 @@ class Cassandra(object):
             FROM likes_by_chitt
             WHERE time = ?
             AND username = ?
+            """)
+        self._q_likes_by_chitt = self.session.prepare("""
+            SELECT username
+            FROM likes_by_chitt
+            WHERE time = ?
             """)
 
     def user_update(self, username, params):
@@ -239,7 +250,7 @@ class Cassandra(object):
             self._execute(self._q_chitts_by_tag_add,
                 [t, username, body, time, p_time])
 
-    def chitt_like(self, username, time_string):
+    def like_add(self, username, time_string):
         time = UUID(time_string)
         p_time = partition_time(datetime_from_uuid1(time))
         self._execute(self._q_likes_by_user_add,
@@ -247,7 +258,7 @@ class Cassandra(object):
         self._execute(self._q_likes_by_chitt_add,
             [time, username])
 
-    def chitt_unlike(self, username, time_string):
+    def like_delete(self, username, time_string):
         time = UUID(time_string)
         p_time = partition_time(datetime_from_uuid1(time))
         self._execute(self._q_likes_by_user_delete,
@@ -255,6 +266,14 @@ class Cassandra(object):
         self._execute(self._q_likes_by_chitt_delete,
             [time, username])
 
+    def likes_by_user(self, username, p_time):
+        return self._execute(self._q_likes_by_user,
+            [username, p_time])
+
+    def likes_by_chitt(self, time_string):
+        time = UUID(time_string)
+        return self._execute(self._q_likes_by_chitt,
+            [time])
 
 
 if __name__ == '__main__':
@@ -270,6 +289,8 @@ if __name__ == '__main__':
     print(list(c.followers_by_user('kuba')))
     c.follow_user('wacek', 'kuba')
     c.follow_user('jacek', 'kuba')
-    c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
-    c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    c.like_add('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    print(list(c.likes_by_user('wacek', '2017-1')))
+    print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
+    c.like_delete('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     print(list(c.chitts_public('2017-1')))

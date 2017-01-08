@@ -6,6 +6,8 @@ from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time
 from utils import parse_tags
 
+PUBLIC_USER = '_public_'
+
 class CassandraException(Exception):
     pass
 
@@ -186,7 +188,7 @@ class Cassandra(object):
         return self._execute(self._q_chitts_by_tag,
             [tag, p_time])
 
-    def add_chitt(self, username, body):
+    def chitt_add(self, username, body):
         current_time = datetime.now()
         time = uuid_from_time(current_time)
         p_time = str(current_time.isocalendar()[:2])
@@ -194,10 +196,14 @@ class Cassandra(object):
         self._execute(self._q_chitts_by_user_add,
             [username, body, time, p_time])
 
-        followers = list(self.followers_by_user(username))
+        followers = self.followers_by_user(username)
         for f in followers:
             self._execute(self._q_chitts_by_following_add,
                 [f, username, body, time, p_time])
+        self._execute(self._q_chitts_by_following_add,
+            [username, username, body, time, p_time])
+        self._execute(self._q_chitts_by_following_add,
+            [PUBLIC_USER, username, body, time, p_time])
 
         tags = parse_tags(body)
         for t in tags:

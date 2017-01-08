@@ -48,6 +48,18 @@ class Cassandra(object):
             SELECT password FROM users
             WHERE username = ?
             """)
+        self._q_chitts_by_following = self.session.prepare("""
+            SELECT * FROM chitts_by_following
+            WHERE follower = ? AND p_time = ?
+            """)
+        self._q_chitts_by_user = self.session.prepare("""
+            SELECT * FROM chitts_by_user
+            WHERE username = ? AND p_time = ?
+            """)
+        self._q_chitts_by_tag = self.session.prepare("""
+            SELECT * FROM chitts_by_tag
+            WHERE tag = ? AND p_time = ?
+            """)
 
         self._q_following_add = self.session.prepare("""
             INSERT INTO following_by_user (username, following)
@@ -59,7 +71,7 @@ class Cassandra(object):
             WHERE username = ?
             AND following = ?
             """)
-        self._q_following_get = self.session.prepare("""
+        self._q_following_by_user = self.session.prepare("""
             SELECT following
             FROM following_by_user
             WHERE username = ?
@@ -75,11 +87,12 @@ class Cassandra(object):
             WHERE username = ?
             AND follower = ?
             """)
-        self._q_followers_get = self.session.prepare("""
+        self._q_followers_by_user = self.session.prepare("""
             SELECT follower
             FROM followers_by_user
             WHERE username = ?
             """)
+
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -118,11 +131,23 @@ class Cassandra(object):
         self._execute(self._q_following_delete, [username, user_to_unfollow])
         self._execute(self._q_follower_delete, [user_to_unfollow, username])
 
-    def following_get(self, username):
-        return self._execute(self._q_following_get, [username])
+    def following_by_user(self, username):
+        return self._execute(self._q_following_by_user, [username])
 
-    def followers_get(self, username):
-        return self._execute(self._q_followers_get, [username])
+    def followers_by_user(self, username):
+        return self._execute(self._q_followers_by_user, [username])
+
+    def chitts_by_following(self, follower, p_time):
+        return self._execute(self._q_chitts_by_following,
+            [follower, p_time])
+
+    def chitts_by_user(self, username, p_time):
+        return self._execute(self._q_chitts_by_user,
+            [username, p_time])
+
+    def chitts_by_tag(self, tag, p_time):
+        return self._execute(self._q_chitts_by_tag,
+            [tag, p_time])
 
 
 if __name__ == '__main__':

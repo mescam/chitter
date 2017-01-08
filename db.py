@@ -5,6 +5,7 @@ from uuid import UUID
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time, datetime_from_uuid1
+from cassandra.concurrent import execute_concurrent
 from utils import parse_tags, partition_time
 import async_tasks
 
@@ -170,6 +171,36 @@ class Cassandra(object):
             WHERE time = ?
             """)
 
+        self._q_update_likes_in_chitts_by_user = self.session.prepare("""
+            UPDATE chitts_by_user
+            SET likes = ?
+            WHERE username = ?
+            AND p_time = ?
+            AND time = ?
+            """)
+
+        self._q_update_likes_in_chitts_by_following = self.session.prepare("""
+            UPDATE chitts_by_following
+            SET likes = ?
+            WHERE follower = ?
+            AND p_time = ?
+            AND time = ?
+            """)
+
+        self._q_update_likes_in_chitts_by_tag = self.session.prepare("""
+            UPDATE chitts_by_tag
+            SET likes = ?
+            WHERE tag = ?
+            AND p_time = ?
+            AND time = ?
+            """)
+
+        self._q_get_chitt_body = self.session.prepare("""
+            SELECT body
+            FROM chitts_by_user
+            WHERE username = ? AND p_time = ? AND time = ?
+            """)
+
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -264,7 +295,8 @@ class Cassandra(object):
         self._execute(self._q_likes_by_user_add,
             [username, time, p_time])
         self._execute(self._q_likes_by_chitt_add,
-            [time, username])
+        [time, username])
+
 
     def like_delete(self, username, time_string):
         time = UUID(time_string)
@@ -285,9 +317,36 @@ class Cassandra(object):
 
     def likes_count_update(self, username, time_string):
         time = UUID(time_string)
-        rs = self._execute(self._q_likes_count_by_chitt,
-                           [time])[0]
-        return rs
+        p_time = partition_time(datetime_from_uuid1(time))
+        likes = self._execute(self._q_likes_count_by_chitt,
+                           [time])[0].count
+        queries = []
+        queries.append(
+            (self._q_update_likes_in_chitts_by_user,
+            (likes, username, p_time, time)))
+
+        for follower in self.followers_by_user(username):
+            queries.append(
+                (self._q_update_likes_in_chitts_by_following,
+                (likes, follower, p_time, time))
+            )
+
+        tags = parse_tags(
+            self._execute(
+                self._q_get_chitt_body,
+                (username, p_time, time)
+            )[0].body)
+
+        for t in tags:
+            queries.append((
+                self._q_update_likes_in_chitts_by_tag,
+                (likes, tag, p_time, time)))
+
+        results = execute_concurrent(
+            self.session,
+            queries
+        )
+                
 
 
 if __name__ == '__main__':
@@ -308,6 +367,6 @@ if __name__ == '__main__':
     print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
     c.like_delete('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     async_tasks.count_likes('12', 'lel')
-    c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
-    c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    #c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    #c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     print(list(c.chitts_public('2017-1')))

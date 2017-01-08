@@ -83,15 +83,18 @@ class Cassandra(object):
             VALUES (?, ?, ?, ?, 0, ?)
             """)
         self._q_chitts_by_following = self.session.prepare("""
-            SELECT * FROM chitts_by_following
+            SELECT username, body, time, likes
+            FROM chitts_by_following
             WHERE follower = ? AND p_time = ?
             """)
         self._q_chitts_by_user = self.session.prepare("""
-            SELECT * FROM chitts_by_user
+            SELECT username, body, time, likes
+            FROM chitts_by_user
             WHERE username = ? AND p_time = ?
             """)
         self._q_chitts_by_tag = self.session.prepare("""
-            SELECT * FROM chitts_by_tag
+            SELECT username, body, time, likes
+            FROM chitts_by_tag
             WHERE tag = ? AND p_time = ?
             """)
 

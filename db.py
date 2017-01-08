@@ -29,7 +29,10 @@ class Cassandra(object):
                                               password=passw)
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
-    
+
+    def _resultset(self, rs, func):
+        for r in rs:
+            yield func(r)
     
     def _execute(self, *args, **kwargs):
         i = 0
@@ -139,10 +142,16 @@ class Cassandra(object):
         self._execute(self._q_follower_delete, [user_to_unfollow, username])
 
     def following_by_user(self, username):
-        return self._execute(self._q_following_by_user, [username])
+        return self._resultset(
+            self._execute(self._q_following_by_user, [username]),
+            lambda x: x.following
+        )
 
     def followers_by_user(self, username):
-        return self._execute(self._q_followers_by_user, [username])
+        return self._resultset(
+            self._execute(self._q_followers_by_user, [username]),
+            lambda x: x.follower
+        )
 
     def chitts_by_following(self, follower, p_time):
         return self._execute(self._q_chitts_by_following,
@@ -176,4 +185,5 @@ if __name__ == '__main__':
     print(c.user_get('admin'))
     print(c.user_verify_password('mescam', 'niety'))
     print(c.user_verify_password('mescam', 'wonsz-zeczny'))
-
+    print(list(c.following_by_user('jacek')))
+    print(list(c.followers_by_user('kuba')))

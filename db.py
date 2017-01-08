@@ -10,8 +10,17 @@ class CassandraException(Exception):
     pass
 
 class Cassandra(object):
-    
+
+    __instance = None
+
+    @staticmethod
+    def gi():
+        if Cassandra.__instance is None:
+            Cassandra.__instance = Cassandra()
+        return Cassandra.__instance
+
     def __init__(self):
+        print("connecting to database")
         self._connect()
         self._prepare_statements()
 
@@ -197,8 +206,8 @@ class Cassandra(object):
 
 
 if __name__ == '__main__':
-    c = Cassandra()
-
+    c = Cassandra.gi()
+    assert Cassandra.gi() is Cassandra.gi()
     c.user_update('mescam', {'bio': 'to ja', 'password': 'niety'})
 
     print(c.user_get('mescam'))

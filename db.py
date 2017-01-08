@@ -1,10 +1,11 @@
 import os
 
 from datetime import datetime
+from uuid import UUID
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.util import uuid_from_time
-from utils import parse_tags
+from cassandra.util import uuid_from_time, datetime_from_uuid1
+from utils import parse_tags, partition_time
 
 PUBLIC_USER = '_public_'
 
@@ -37,7 +38,7 @@ class Cassandra(object):
                 "No Cassandra configuration found"
             )
 
-        auth_provider = PlainTextAuthProvider(username=uname, 
+        auth_provider = PlainTextAuthProvider(username=uname,
                                               password=passw)
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
@@ -45,7 +46,7 @@ class Cassandra(object):
     def _resultset(self, rs, func):
         for r in rs:
             yield func(r)
-    
+
     def _execute(self, *args, **kwargs):
         i = 0
         while i < 3:
@@ -126,6 +127,27 @@ class Cassandra(object):
             WHERE username = ?
             """)
 
+        self._q_likes_by_user_add = self.session.prepare("""
+            INSERT INTO likes_by_user (username, time, p_time)
+            VALUES (?, ?, ?)
+            """)
+        self._q_likes_by_user_delete = self.session.prepare("""
+            DELETE
+            FROM likes_by_user
+            WHERE username = ?
+            AND p_time = ?
+            AND time = ?
+            """)
+        self._q_likes_by_chitt_add = self.session.prepare("""
+            INSERT INTO likes_by_chitt (time, username)
+            VALUES (?, ?)
+            """)
+        self._q_likes_by_chitt_delete = self.session.prepare("""
+            DELETE
+            FROM likes_by_chitt
+            WHERE time = ?
+            AND username = ?
+            """)
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -191,7 +213,7 @@ class Cassandra(object):
     def chitt_add(self, username, body):
         current_time = datetime.now()
         time = uuid_from_time(current_time)
-        p_time = str(current_time.isocalendar()[:2])
+        p_time = partition_time(current_time)
 
         self._execute(self._q_chitts_by_user_add,
             [username, body, time, p_time])
@@ -210,6 +232,23 @@ class Cassandra(object):
             self._execute(self._q_chitts_by_tag_add,
                 [t, username, body, time, p_time])
 
+    def chitt_like(self, username, time_string):
+        time = UUID(time_string)
+        p_time = partition_time(datetime_from_uuid1(time))
+        self._execute(self._q_likes_by_user_add,
+            [username, time, p_time])
+        self._execute(self._q_likes_by_chitt_add,
+            [time, username])
+
+    def chitt_unlike(self, username, time_string):
+        time = UUID(time_string)
+        p_time = partition_time(datetime_from_uuid1(time))
+        self._execute(self._q_likes_by_user_delete,
+            [username, time, p_time])
+        self._execute(self._q_likes_by_chitt_delete,
+            [time, username])
+
+
 
 if __name__ == '__main__':
     c = Cassandra.gi()
@@ -224,3 +263,5 @@ if __name__ == '__main__':
     print(list(c.followers_by_user('kuba')))
     c.follow_user('wacek', 'kuba')
     c.follow_user('jacek', 'kuba')
+    c.chitt_like('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    c.chitt_unlike('wacek', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')

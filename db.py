@@ -5,6 +5,7 @@ from uuid import UUID
 from cassandra.cluster import Cluster
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time, datetime_from_uuid1
+from cassandra.query import BatchStatement
 from cassandra.concurrent import execute_concurrent
 from utils import parse_tags, partition_time
 import async_tasks
@@ -272,22 +273,33 @@ class Cassandra(object):
         time = uuid_from_time(current_time)
         p_time = partition_time(current_time)
 
-        self._execute(self._q_chitts_by_user_add,
+        batch = BatchStatement()
+        batch.add(self._q_chitts_by_user_add,
             [username, body, time, p_time])
+        batch.add(self._q_chitts_by_following_add,
+            [username, username, body, time, p_time])
+        batch.add(self._q_chitts_by_following_add,
+            [PUBLIC_USER, username, body, time, p_time])
+        self._execute(batch)
 
+        queries = []
         followers = self.followers_by_user(username)
         for f in followers:
-            self._execute(self._q_chitts_by_following_add,
-                [f, username, body, time, p_time])
-        self._execute(self._q_chitts_by_following_add,
-            [username, username, body, time, p_time])
-        self._execute(self._q_chitts_by_following_add,
-            [PUBLIC_USER, username, body, time, p_time])
-
+            queries.append(
+                (self._q_chitts_by_following_add,
+                (f, username, body, time, p_time))
+            )
         tags = parse_tags(body)
         for t in tags:
-            self._execute(self._q_chitts_by_tag_add,
-                [t, username, body, time, p_time])
+            queries.append(
+                (self._q_chitts_by_tag_add,
+                (t, username, body, time, p_time))
+            )
+
+        execute_concurrent(
+            self.session,
+            queries
+        )
 
     def like_add(self, username, chitt_author, time_string):
         time = UUID(time_string)
@@ -332,7 +344,6 @@ class Cassandra(object):
                 (likes, follower, p_time, time))
             )
 
-
         queries.append(
             (self._q_update_likes_in_chitts_by_following,
             (likes, username, p_time, time))
@@ -357,25 +368,27 @@ class Cassandra(object):
             self.session,
             queries
         )
-                
 
 
 if __name__ == '__main__':
     c = Cassandra.gi()
     assert Cassandra.gi() is Cassandra.gi()
-    c.user_update('mescam', {'bio': 'to ja', 'password': 'niety'})
-
-    print(c.user_get('mescam'))
-    print(c.user_get('admin'))
-    print(c.user_verify_password('mescam', 'niety'))
-    print(c.user_verify_password('mescam', 'wonsz-zeczny'))
-    print(list(c.following_by_user('jacek')))
-    print(list(c.followers_by_user('kuba')))
-    c.follow_user('wacek', 'kuba')
-    c.follow_user('jacek', 'kuba')
-    c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
-    print(list(c.likes_by_user('wacek', '2017-1')))
-    print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
-    #c.like_delete('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    # c.user_update('mescam', {'bio': 'to ja', 'password': 'niety'})
+    #
+    # print(c.user_get('mescam'))
+    # print(c.user_get('admin'))
+    # print(c.user_verify_password('mescam', 'niety'))
+    # print(c.user_verify_password('mescam', 'wonsz-zeczny'))
+    # print(list(c.following_by_user('jacek')))
+    # print(list(c.followers_by_user('kuba')))
+    # c.follow_user('wacek', 'kuba')
+    # c.follow_user('jacek', 'kuba')
+    # c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
+    # print(list(c.likes_by_user('wacek', '2017-1')))
+    # print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
+    # c.chitt_add('jacek', 'lubie #makowiec :3')
+    # c.chitt_add('kuba', 'a ja jeszcze mocniej lubie #makowiec :p')
+    # c.like_add('wacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
+    # c.like_add('jacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     #async_tasks.count_likes('12', 'lel')
-    print(list(c.chitts_public('2017-1')))
+    print(list(c.chitts_public('2017-2')))

@@ -27,3 +27,8 @@ class UserFollowing(Resource):
     def get(self, username):
         cass = db.Cassandra.gi()
         return list(cass.following_by_user(username))
+
+class UserFollowers(Resource):
+    def get(self, username):
+        cass = db.Cassandra.gi()
+        return list(cass.followers_by_user(username))

@@ -6,7 +6,7 @@ def parse_tags(text):
     return _HASHTAG_RE.findall(text)
 
 def partition_time(time):
-	return '-'.join(map(str, time.isocalendar()[:2]))
+	return int(time.timestamp() / (3600 * 24 * 7))
 
 if __name__ == '__main__':
     print(parse_tags("nie wiem co powiedziec #srds2016"))

@@ -75,8 +75,8 @@ class Cassandra(object):
                 (username, body, time, likes, p_time)
             VALUES (?, ?, ?, 0, ?)
             """)
-        self._q_chitts_by_following_add = self.session.prepare("""
-            INSERT INTO chitts_by_following
+        self._q_chitts_by_follower_add = self.session.prepare("""
+            INSERT INTO chitts_by_follower
                 (follower, username, body, time, likes, p_time)
             VALUES (?, ?, ?, ?, 0, ?)
             """)
@@ -85,9 +85,9 @@ class Cassandra(object):
                 (tag, username, body, time, likes, p_time)
             VALUES (?, ?, ?, ?, 0, ?)
             """)
-        self._q_chitts_by_following = self.session.prepare("""
+        self._q_chitts_by_follower = self.session.prepare("""
             SELECT username, body, time, likes
-            FROM chitts_by_following
+            FROM chitts_by_follower
             WHERE follower = ? AND p_time = ?
             """)
         self._q_chitts_by_user = self.session.prepare("""
@@ -180,8 +180,8 @@ class Cassandra(object):
             AND time = ?
             """)
 
-        self._q_update_likes_in_chitts_by_following = self.session.prepare("""
-            UPDATE chitts_by_following
+        self._q_update_likes_in_chitts_by_follower = self.session.prepare("""
+            UPDATE chitts_by_follower
             SET likes = ?
             WHERE follower = ?
             AND p_time = ?
@@ -252,8 +252,8 @@ class Cassandra(object):
             lambda x: x.follower
         )
 
-    def chitts_by_following(self, follower, p_time):
-        return self._execute(self._q_chitts_by_following,
+    def chitts_by_follower(self, follower, p_time):
+        return self._execute(self._q_chitts_by_follower,
             [follower, p_time])
 
     def chitts_by_user(self, username, p_time):
@@ -265,7 +265,7 @@ class Cassandra(object):
             [tag, p_time])
 
     def chitts_public(self, p_time):
-        return self._execute(self._q_chitts_by_following,
+        return self._execute(self._q_chitts_by_follower,
             [PUBLIC_USER, p_time])
 
     def chitt_add(self, username, body):
@@ -276,9 +276,9 @@ class Cassandra(object):
         batch = BatchStatement()
         batch.add(self._q_chitts_by_user_add,
             [username, body, time, p_time])
-        batch.add(self._q_chitts_by_following_add,
+        batch.add(self._q_chitts_by_follower_add,
             [username, username, body, time, p_time])
-        batch.add(self._q_chitts_by_following_add,
+        batch.add(self._q_chitts_by_follower_add,
             [PUBLIC_USER, username, body, time, p_time])
         self._execute(batch)
 
@@ -286,7 +286,7 @@ class Cassandra(object):
         followers = self.followers_by_user(username)
         for f in followers:
             queries.append(
-                (self._q_chitts_by_following_add,
+                (self._q_chitts_by_follower_add,
                 (f, username, body, time, p_time))
             )
         tags = parse_tags(body)
@@ -340,16 +340,16 @@ class Cassandra(object):
 
         for follower in self.followers_by_user(username):
             queries.append(
-                (self._q_update_likes_in_chitts_by_following,
+                (self._q_update_likes_in_chitts_by_follower,
                 (likes, follower, p_time, time))
             )
 
         queries.append(
-            (self._q_update_likes_in_chitts_by_following,
+            (self._q_update_likes_in_chitts_by_follower,
             (likes, username, p_time, time))
         )
         queries.append(
-            (self._q_update_likes_in_chitts_by_following,
+            (self._q_update_likes_in_chitts_by_follower,
             (likes, PUBLIC_USER, p_time, time))
         )
 
@@ -381,14 +381,14 @@ if __name__ == '__main__':
     # print(c.user_verify_password('mescam', 'wonsz-zeczny'))
     # print(list(c.following_by_user('jacek')))
     # print(list(c.followers_by_user('kuba')))
-    # c.follow_user('wacek', 'kuba')
-    # c.follow_user('jacek', 'kuba')
+    c.follow_user('wacek', 'kuba')
+    c.follow_user('jacek', 'kuba')
     # c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     # print(list(c.likes_by_user('wacek', '2017-1')))
     # print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
-    # c.chitt_add('jacek', 'lubie #makowiec :3')
-    # c.chitt_add('kuba', 'a ja jeszcze mocniej lubie #makowiec :p')
+    c.chitt_add('jacek', 'lubie #makowiec :3')
+    c.chitt_add('kuba', 'a ja jeszcze mocniej lubie #makowiec :p')
     # c.like_add('wacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     # c.like_add('jacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     #async_tasks.count_likes('12', 'lel')
-    print(list(c.chitts_public('2017-2')))
+    # print(list(c.chitts_public('2017-2')))

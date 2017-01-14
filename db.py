@@ -202,6 +202,27 @@ class Cassandra(object):
             WHERE username = ? AND p_time = ? AND time = ?
             """)
 
+        self._q_update_p_time_by_user = self.session.prepare("""
+            UPDATE p_time_by_user
+            SET chitts = chitts + 1
+            WHERE username = ?
+            AND p_time = ?;
+            """)
+
+        self._q_update_p_time_by_follower = self.session.prepare("""
+            UPDATE p_time_by_follower
+            SET chitts = chitts + 1
+            WHERE follower = ?
+            AND p_time = ?;
+            """)
+
+        self._q_update_p_time_by_tag = self.session.prepare("""
+            UPDATE p_time_by_tag
+            SET chitts = chitts + 1
+            WHERE tag = ?
+            AND p_time = ?;
+            """)
+
 
     def user_update(self, username, params):
         stmt = self.session.prepare("""
@@ -289,12 +310,28 @@ class Cassandra(object):
                 (self._q_chitts_by_follower_add,
                 (f, username, body, time, p_time))
             )
+            queries.append(
+                (self._q_update_p_time_by_follower,
+                (f, p_time))
+            )
+
         tags = parse_tags(body)
         for t in tags:
             queries.append(
                 (self._q_chitts_by_tag_add,
                 (t, username, body, time, p_time))
             )
+            queries.append(
+                (self._q_update_p_time_by_tag,
+                (t, p_time))
+            )
+
+        queries.extend([
+            (self._q_update_p_time_by_user,
+                (username, p_time)),
+            (self._q_update_p_time_by_follower,
+                (username, p_time))
+        ])
 
         execute_concurrent(
             self.session,
@@ -386,8 +423,8 @@ if __name__ == '__main__':
     # c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     # print(list(c.likes_by_user('wacek', '2017-1')))
     # print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
-    c.chitt_add('jacek', 'lubie #makowiec :3')
-    c.chitt_add('kuba', 'a ja jeszcze mocniej lubie #makowiec :p')
+    # c.chitt_add('jacek', 'lubie #makowiec :3')
+    # c.chitt_add('kuba', 'smiedza mi stopy :(')
     # c.like_add('wacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     # c.like_add('jacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     #async_tasks.count_likes('12', 'lel')

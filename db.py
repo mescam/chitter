@@ -65,7 +65,7 @@ class Cassandra(object):
             SELECT * FROM users
             WHERE username = ?
             """)
-        self._q_user_verify_password = self.session.prepare("""
+        self._q_user_get_password = self.session.prepare("""
             SELECT password FROM users
             WHERE username = ?
             """)
@@ -222,15 +222,15 @@ class Cassandra(object):
         except IndexError:
             return None
 
-    def user_verify_password(self, username, password):
+    def user_get_password(self, username):
         result = self._execute(
-            self._q_user_verify_password,
+            self._q_user_get_password,
             [username]
         )
         try:
-            return (result[0].password == password)
+            return result[0].password
         except IndexError:
-            return False
+            return None
 
     def follow_user(self, username, user_to_follow):
         self._execute(self._q_following_add, [username, user_to_follow])

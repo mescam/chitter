@@ -1,8 +1,10 @@
 import resources.users
 import resources.chitts
+import resources.login
 
 urls = [
-    (users.User, '/api/users/'),
+	(resources.login.Login, '/api/login'),
+    (users.User, '/api/users/<string:username>'),
     (users.UserFollowing, '/api/users/<string:username>/following'),
     (chitts.Chitt, '/api/chitts/'),
 ]

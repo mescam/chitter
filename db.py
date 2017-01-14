@@ -46,7 +46,7 @@ class Cassandra(object):
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
 
-    def _resultset(self, rs, func):
+    def _resultset(self, rs, func=lambda x:x):
         for r in rs:
             yield func(r)
 
@@ -68,6 +68,10 @@ class Cassandra(object):
         self._q_user_get_password = self.session.prepare("""
             SELECT password FROM users
             WHERE username = ?
+            """)
+
+        self._q_users_get = self.session.prepare("""
+            SELECT username FROM users
             """)
 
         self._q_chitts_by_user_add = self.session.prepare("""
@@ -116,6 +120,11 @@ class Cassandra(object):
             FROM following_by_user
             WHERE username = ?
             """)
+        self._q_following_by_user_count = self.session.prepare("""
+            SELECT COUNT(*)
+            FROM following_by_user
+            WHERE username = ?
+            """)
 
         self._q_follower_add = self.session.prepare("""
             INSERT INTO followers_by_user (username, follower)
@@ -129,6 +138,11 @@ class Cassandra(object):
             """)
         self._q_followers_by_user = self.session.prepare("""
             SELECT follower
+            FROM followers_by_user
+            WHERE username = ?
+            """)
+        self._q_followers_by_user_count = self.session.prepare("""
+            SELECT COUNT(*)
             FROM followers_by_user
             WHERE username = ?
             """)
@@ -253,6 +267,12 @@ class Cassandra(object):
         except IndexError:
             return None
 
+    def users_get(self):
+        return self._resultset(
+            self._execute(self._q_users_get),
+            lambda x: x.username
+        )
+
     def follow_user(self, username, user_to_follow):
         self._execute(self._q_following_add, [username, user_to_follow])
         self._execute(self._q_follower_add, [user_to_follow, username])
@@ -267,11 +287,19 @@ class Cassandra(object):
             lambda x: x.following
         )
 
+    def following_by_user_count(self, username):
+        return self._execute(self._q_following_by_user_count, 
+                            [username])[0].count
+
     def followers_by_user(self, username):
         return self._resultset(
             self._execute(self._q_followers_by_user, [username]),
             lambda x: x.follower
         )
+
+    def followers_by_user_count(self, username):
+        return self._execute(self._q_followers_by_user_count, 
+                            [username])[0].count
 
     def chitts_by_follower(self, follower, p_time):
         return self._execute(self._q_chitts_by_follower,

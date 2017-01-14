@@ -74,6 +74,11 @@ class Cassandra(object):
             SELECT username FROM users
             """)
 
+        self._q_user_exists = self.session.prepare("""
+            SELECT COUNT(*) FROM users
+            WHERE username = ?
+            """)
+
         self._q_chitts_by_user_add = self.session.prepare("""
             INSERT INTO chitts_by_user
                 (username, body, time, likes, p_time)
@@ -272,6 +277,9 @@ class Cassandra(object):
             self._execute(self._q_users_get),
             lambda x: x.username
         )
+
+    def user_exists(self, username):
+        return (self._execute(self._q_user_exists, [username])[0].count > 0)
 
     def follow_user(self, username, user_to_follow):
         self._execute(self._q_following_add, [username, user_to_follow])

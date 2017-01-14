@@ -6,22 +6,22 @@ class Users(Resource):
         return list(db.Cassandra.gi().users_get()), 200
 
 class User(Resource):
-	def get(self, username):
-		cass = db.Cassandra.gi()
-		user = cass.user_get(username)
+    def get(self, username):
+        cass = db.Cassandra.gi()
+        user = cass.user_get(username)
 
-		if not user:
-			return {}, 404
+        if not user:
+            return {}, 404
 
-		followers = cass.followers_by_user_count(username)
-		following = cass.following_by_user_count(username)
+        followers = cass.followers_by_user_count(username)
+        following = cass.following_by_user_count(username)
 
-		return {
-			'username': user.username,
-			'bio': user.bio,
-			'followers': followers,
-			'following': following
-		}, 200
+        return {
+            'username': user.username,
+            'bio': user.bio,
+            'followers': followers,
+            'following': following
+        }, 200
 
 class UserFollowing(Resource):
     def get(self, username):

@@ -16,5 +16,5 @@ if __name__ == '__main__':
         print(parse_tags("#notice-me-senpai #systemy #rozproszone #nie_wiem"))
     elif sys.argv[1] == 'hash':
         from werkzeug.security import generate_password_hash
-        print(generate_password_hash(sys.argv[1]))
+        print(generate_password_hash(sys.argv[2]))
 

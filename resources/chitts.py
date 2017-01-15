@@ -1,7 +1,10 @@
 from flask_restful import Resource
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required, get_raw_jwt
+
 from flask import request
+
 import db
+from utils import jwt_barrier
 
 MAX_CHITTS_COUNT = 50
 MAX_P_TIMES_COUNT = 3
@@ -44,6 +47,10 @@ class Chitts(Resource):
         filter_type = request.args.get('type') or 'public'
         upper_bound = request.args.get('p_time') or 9999999
         keyword = request.args.get('keyword') or ''
+
+        if filter_type == 'follower':
+            jwt_barrier()
+            keyword = get_jwt_identity()
 
         p_times, next_p_time = get_p_times(
                 filter_type,

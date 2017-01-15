@@ -2,7 +2,7 @@ import os
 
 from datetime import datetime
 from uuid import UUID
-from cassandra.cluster import Cluster
+from cassandra.cluster import Cluster, NoHostAvailable
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.util import uuid_from_time, datetime_from_uuid1
 from cassandra.query import BatchStatement
@@ -55,7 +55,7 @@ class Cassandra(object):
         while i < 3:
             try:
                 return self.session.execute(*args, **kwargs)
-            except cassandra.cluster.NoHostAvailable:
+            except NoHostAvailable:
                 self._connect()
                 i += 1
         raise CassandraException("No host available")

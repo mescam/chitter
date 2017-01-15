@@ -336,17 +336,17 @@ class Cassandra(object):
         return self._execute(self._q_followers_by_user_count, 
                             [username])[0].count
 
-    def chitts_by(self, type, p_times):
-        if type == 'user':
+    def chitts_by(self, filter_type, keyword, p_times):
+        if filter_type == 'user':
             result = self._execute(self._q_chitts_by_user,
-                [username, p_times])
-        elif type == 'follower':
+                [keyword, p_times])
+        elif filter_type == 'follower':
             result = self._execute(self._q_chitts_by_follower,
-                [follower, p_times])
-        elif type == 'tag':
+                [keyword, p_times])
+        elif filter_type == 'tag':
             result = self._execute(self._q_chitts_by_tag,
-                [tag, p_times])
-        elif type == 'public':
+                [keyword, p_times])
+        elif filter_type == 'public':
             result = self._execute(self._q_chitts_by_follower,
                 [PUBLIC_USER, p_times])
         else:
@@ -414,17 +414,17 @@ class Cassandra(object):
             queries
         )
 
-    def p_times_by(self, type, upper_bound, keyword, limit):
-        if type == 'user':
+    def p_times_by(self, filter_type, keyword, upper_bound, limit):
+        if filter_type == 'user':
             result = self._execute(self._q_p_time_by_user,
                 [keyword, upper_bound, limit])
-        elif type == 'follower':
+        elif filter_type == 'follower':
             result = self._execute(self._q_p_time_by_follower,
                 [keyword, upper_bound, limit])
-        elif type == 'tag':
+        elif filter_type == 'tag':
             result = self._execute(self._q_p_time_by_tag,
                 [keyword, upper_bound, limit])
-        elif type == 'public':
+        elif filter_type == 'public':
             result = self._execute(self._q_p_time_by_follower,
                 [PUBLIC_USER, upper_bound, limit])
         else:

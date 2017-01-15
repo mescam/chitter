@@ -8,5 +8,5 @@ urls = [
     (resources.users.User, '/api/users/<string:username>'),
     (resources.users.UserFollowing, '/api/users/<string:username>/following'),
     (resources.users.UserFollowers, '/api/users/<string:username>/followers'),
-    (chitts.Chitts, '/api/chitts'),
+    (resources.chitts.Chitts, '/api/chitts'),
 ]

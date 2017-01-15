@@ -6,7 +6,8 @@ def parse_tags(text):
     return _HASHTAG_RE.findall(text)
 
 def partition_time(time):
-	return int(time.timestamp() / (3600 * 24 * 7))
+    # return int(time.timestamp() / (3600 * 24 * 7))
+    return int(time.timestamp() / (3600))
 
 if __name__ == '__main__':
     import sys

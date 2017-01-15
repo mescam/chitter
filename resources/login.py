@@ -8,7 +8,6 @@ from db import Cassandra
 
 class Login(Resource):
     def post(self):
-        print(request.json)
         uname = request.json.get('username', None)
         passw = request.json.get('password', None)
 
@@ -20,6 +19,5 @@ class Login(Resource):
                 'access_token': create_access_token(identity=uname)
             }, 200
         else:
-            return {'error': 'access denied'}, 401 
-
+            return {'error': 'access denied'}, 401
 

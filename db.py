@@ -98,19 +98,19 @@ class Cassandra(object):
             SELECT username, body, time, likes
             FROM chitts_by_follower
             WHERE follower = ?
-            AND p_time IN ?
+            AND p_time = ?
             """)
         self._q_chitts_by_user = self.session.prepare("""
             SELECT username, body, time, likes
             FROM chitts_by_user
             WHERE username = ?
-            AND p_time IN ?
+            AND p_time = ?
             """)
         self._q_chitts_by_tag = self.session.prepare("""
             SELECT username, body, time, likes
             FROM chitts_by_tag
             WHERE tag = ?
-            AND p_time IN ?
+            AND p_time = ?
             """)
 
         self._q_following_add = self.session.prepare("""
@@ -338,30 +338,40 @@ class Cassandra(object):
 
     def chitts_by(self, filter_type, keyword, p_times):
         if filter_type == 'user':
-            result = self._execute(self._q_chitts_by_user,
-                [keyword, p_times])
+            query = self._q_chitts_by_user
+            params = (keyword, )
         elif filter_type == 'follower':
-            result = self._execute(self._q_chitts_by_follower,
-                [keyword, p_times])
+            query = self._q_chitts_by_follower
+            params = (keyword, )
         elif filter_type == 'tag':
-            result = self._execute(self._q_chitts_by_tag,
-                [keyword, p_times])
+            query = self._q_chitts_by_tag
+            params = (keyword, )
         elif filter_type == 'public':
-            result = self._execute(self._q_chitts_by_follower,
-                [PUBLIC_USER, p_times])
+            query = self._q_chitts_by_follower
+            params = (PUBLIC_USER, )
         else:
             return None
 
-        return self._resultset(
-            result,
-            lambda x: {
-                'username': x.username,
-                'body': x.body,
-                'id': str(x.time),
-                'timestamp': datetime_from_uuid1(x.time).timestamp(),
-                'likes': x.likes
-            }
-        )
+        queries = [(query, (*params, p_t)) for p_t in p_times]
+        results = execute_concurrent(self.session, queries)
+
+        status = True
+        chitts = []
+
+        for (success, result) in results:
+            if success:
+                for r in result:
+                    chitts.append({
+                        'username': r.username,
+                        'body': r.body,
+                        'id': str(r.time),
+                        'timestamp': datetime_from_uuid1(r.time).timestamp(),
+                        'likes': r.likes
+                    })
+            else:
+                status = False
+
+        return status, chitts
 
     def chitt_add(self, username, body):
         current_time = datetime.now()
@@ -515,13 +525,13 @@ if __name__ == '__main__':
     # print(c.user_verify_password('mescam', 'wonsz-zeczny'))
     # print(list(c.following_by_user('jacek')))
     # print(list(c.followers_by_user('kuba')))
-    c.follow_user('wacek', 'kuba')
-    c.follow_user('jacek', 'kuba')
+    # c.follow_user('wacek', 'kuba')
+    # c.follow_user('jacek', 'kuba')
     # c.like_add('wacek', 'kuba', '321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')
     # print(list(c.likes_by_user('wacek', '2017-1')))
     # print(list(c.likes_by_chitt('321595b8-d5c5-11e6-8e60-2c1c6ff16c9a')))
-    # c.chitt_add('jacek', '#makowiec jest najlepszy!')
-    # c.chitt_add('kuba', 'Chitter jest ekstra. Uwielbiam go tak mocno, jak kocham #makowiec')
+    # c.chitt_add('wacek', '#makowiec #srakowiec. nienawidze #makowiec')
+    # c.chitt_add('wacek', 'Ej, a ja nie lubie #makowiec. Where is your god now?')
     # c.like_add('wacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     # c.like_add('jacek', 'kuba', '6c96847a-d66c-11e6-b092-92863003fff0')
     #async_tasks.count_likes('12', 'lel')

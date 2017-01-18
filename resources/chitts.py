@@ -35,10 +35,11 @@ def get_p_times(filter_type, keyword, upper_bound, ):
         return limited, None
 
 
-def format_response(next_p_time, chitts):
+def format_response(next_p_time, chitts, status):
     return {
         'next_p_time': next_p_time,
-        'chitts': chitts
+        'chitts': chitts,
+        'completeResponse': status
     }
 
 
@@ -57,7 +58,7 @@ class Chitts(Resource):
                 keyword,
                 int(upper_bound)
             )        
-        chitts = list(cass.chitts_by(filter_type, keyword, p_times))
+        status, chitts = cass.chitts_by(filter_type, keyword, p_times)
 
-        return format_response(next_p_time, chitts), 200
+        return format_response(next_p_time, chitts, status), 200
 

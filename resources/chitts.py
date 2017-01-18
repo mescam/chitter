@@ -1,13 +1,14 @@
 from flask_restful import Resource
 from flask_jwt_extended import get_jwt_identity, jwt_required, get_raw_jwt
-
 from flask import request
+import bleach
 
 import db
 from utils import jwt_barrier
 
 MAX_CHITTS_COUNT = 50
 MAX_P_TIMES_COUNT = 3
+MAX_CHITT_LEN = 128
 
 cass = db.Cassandra.gi()
 
@@ -62,3 +63,17 @@ class Chitts(Resource):
 
         return format_response(next_p_time, chitts, status), 200
 
+    @jwt_required
+    def post(self):
+        body = request.json.get('body', None)
+
+        if body is None:
+            return {'error': 'no body provided'}, 400
+        elif len(body) > MAX_CHITT_LEN:
+            return {'error': 'chitt body too long'}, 413
+
+        cass.chitt_add(
+            get_jwt_identity(),
+            bleach.clean(body)
+        )
+        return {}, 200

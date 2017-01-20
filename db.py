@@ -8,8 +8,9 @@ from cassandra.util import uuid_from_time, datetime_from_uuid1
 from cassandra.query import BatchStatement
 from cassandra.concurrent import execute_concurrent
 from utils import parse_tags, partition_time
+import kv
 import async_tasks
-from redis import Redis
+
 
 PUBLIC_USER = '_public_'
 
@@ -47,7 +48,8 @@ class Cassandra(object):
                                               password=passw)
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
-        self.redis = Redis()
+        self.redis = kv.KeyValue().gi().redis
+        
 
     def _resultset(self, rs, func=lambda x:x):
         for r in rs:

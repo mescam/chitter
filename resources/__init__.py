@@ -9,4 +9,5 @@ urls = [
     (resources.users.UserFollowing, '/api/users/<string:username>/following'),
     (resources.users.UserFollowers, '/api/users/<string:username>/followers'),
     (resources.chitts.Chitts, '/api/chitts'),
+    (resources.chitts.ChittsLike, '/api/chitts/<string:author>,<string:timeuuid>/likes')
 ]

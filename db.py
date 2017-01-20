@@ -9,8 +9,10 @@ from cassandra.query import BatchStatement
 from cassandra.concurrent import execute_concurrent
 from utils import parse_tags, partition_time
 import async_tasks
+from redis import Redis
 
 PUBLIC_USER = '_public_'
+
 
 class CassandraException(Exception):
     pass
@@ -45,6 +47,7 @@ class Cassandra(object):
                                               password=passw)
         self.cluster = Cluster(cpoints, auth_provider=auth_provider)
         self.session = self.cluster.connect(kspace)
+        self.redis = Redis()
 
     def _resultset(self, rs, func=lambda x:x):
         for r in rs:
@@ -276,7 +279,6 @@ class Cassandra(object):
             WHERE username = ?
             """.format(', '.join(["{} = ?".format(p) for p in params]))
         )
-        print(stmt)
         vals = list(params.values())
         vals.append(username)
 
@@ -373,9 +375,15 @@ class Cassandra(object):
 
         return status, chitts
 
+    def chitt_exists(self, username, timeuuid):
+        #print(self.redis.get("chitter:chitt:%s:%s" % (username, timeuuid)))
+        return bool(self.redis.get("chitter:chitt:%s:%s" % (username, timeuuid)))
+
+
     def chitt_add(self, username, body):
         current_time = datetime.now()
         time = uuid_from_time(current_time)
+        self.redis.set("chitter:chitt:%s:%s" % (username, str(time)), True)
         p_time = partition_time(current_time)
 
         batch = BatchStatement()
@@ -469,8 +477,11 @@ class Cassandra(object):
 
     def likes_by_chitt(self, time_string):
         time = UUID(time_string)
-        return self._execute(self._q_likes_by_chitt,
-            [time])
+        return self._resultset(
+            self._execute(self._q_likes_by_chitt,
+                          [time]),
+            lambda x: x.username
+        )
 
     def likes_count_update(self, username, time_string):
         time = UUID(time_string)

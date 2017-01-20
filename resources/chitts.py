@@ -77,3 +77,27 @@ class Chitts(Resource):
             bleach.clean(body)
         )
         return {}, 200
+
+class ChittsLike(Resource):
+ 
+    @jwt_required
+    def post(self, author, timeuuid):
+        if not cass.chitt_exists(author, timeuuid):
+            return {}, 404
+        username = get_jwt_identity()
+        cass.like_add(username, author, timeuuid)
+        return {}, 201
+
+    @jwt_required
+    def delete(self, author, timeuuid):
+        if not cass.chitt_exists(author, timeuuid):
+            return {}, 404
+        username = get_jwt_identity()
+        cass.like_delete(username, author, timeuuid)
+        return {}, 200
+
+
+    def get(self, author, timeuuid):
+        if not cass.chitt_exists(author, timeuuid):
+            return {}, 404
+        return {'likes': list(cass.likes_by_chitt(timeuuid))}, 200

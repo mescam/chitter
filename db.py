@@ -391,7 +391,9 @@ class Cassandra(object):
             chitts2 = chitts[:100]
 
         if len(chitts) > len(chitts2):
-            next_p_time = partition_time(datetime.fromtimestamp(int(chitts[101]['timestamp'])))
+            print(chitts[len(chitts2)])
+            next_p_time = partition_time(datetime_from_uuid1(UUID(chitts[len(chitts2)]['id'])))
+            print(next_p_time)
         else:
             next_p_time = None
 
@@ -403,7 +405,7 @@ class Cassandra(object):
 
 
     def chitt_add(self, username, body):
-        current_time = datetime.now()
+        current_time = datetime.utcnow()
         time = uuid_from_time(current_time)
         self.redis.set("chitter:chitt:%s:%s" % (username, str(time)), True)
         p_time = partition_time(current_time)

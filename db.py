@@ -1,4 +1,5 @@
 import os
+import itertools
 
 from datetime import datetime
 from uuid import UUID
@@ -99,23 +100,29 @@ class Cassandra(object):
                 (tag, username, body, time, likes, p_time)
             VALUES (?, ?, ?, ?, 0, ?)
             """)
+
         self._q_chitts_by_follower = self.session.prepare("""
             SELECT username, body, time, likes
             FROM chitts_by_follower
             WHERE follower = ?
             AND p_time = ?
+
             """)
+
         self._q_chitts_by_user = self.session.prepare("""
             SELECT username, body, time, likes
             FROM chitts_by_user
             WHERE username = ?
             AND p_time = ?
+
             """)
+
         self._q_chitts_by_tag = self.session.prepare("""
             SELECT username, body, time, likes
             FROM chitts_by_tag
             WHERE tag = ?
             AND p_time = ?
+
             """)
 
         self._q_following_add = self.session.prepare("""
@@ -340,20 +347,22 @@ class Cassandra(object):
         return self._execute(self._q_followers_by_user_count, 
                             [username])[0].count
 
-    def chitts_by(self, filter_type, keyword, p_times):
-        if filter_type == 'user':
-            query = self._q_chitts_by_user
-            params = (keyword, )
-        elif filter_type == 'follower':
-            query = self._q_chitts_by_follower
-            params = (keyword, )
-        elif filter_type == 'tag':
-            query = self._q_chitts_by_tag
-            params = (keyword, )
-        elif filter_type == 'public':
-            query = self._q_chitts_by_follower
-            params = (PUBLIC_USER, )
+    def chitts_by(self, filter_type, keyword, p_times, ubound=None):
+        queries_dict = {
+            'user': self._q_chitts_by_user,
+            'follower': self._q_chitts_by_follower,
+            'tag': self._q_chitts_by_tag,
+            'public': self._q_chitts_by_follower
+        }
+
+        if filter_type == 'public':
+            params = [PUBLIC_USER]
         else:
+            params = [keyword]
+
+        try:
+            query = queries_dict[filter_type]
+        except KeyError:
             return None
 
         queries = [(query, (*params, p_t)) for p_t in p_times]
@@ -374,6 +383,10 @@ class Cassandra(object):
                     })
             else:
                 status = False
+        if ubound:
+            chitts = list(itertools.dropwhile(lambda x: datetime_from_uuid1(UUID(x['id'])) > datetime_from_uuid1(UUID(ubound)), chitts))[1:101]
+        else:
+            chitts = chitts[:100]
 
         return status, chitts
 

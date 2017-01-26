@@ -6,7 +6,7 @@ import bleach
 import db
 from utils import jwt_barrier
 
-MAX_CHITTS_COUNT = 50
+MAX_CHITTS_COUNT = 100
 MAX_P_TIMES_COUNT = 3
 MAX_CHITT_LEN = 128
 
@@ -49,6 +49,7 @@ class Chitts(Resource):
         filter_type = request.args.get('type') or 'public'
         upper_bound = request.args.get('p_time') or 9999999
         keyword = request.args.get('keyword') or ''
+        last_chitt_ubound = request.args.get('last_chitt_ubound', None)
 
         if filter_type == 'follower':
             jwt_barrier()
@@ -59,7 +60,7 @@ class Chitts(Resource):
                 keyword,
                 int(upper_bound)
             )        
-        status, chitts = cass.chitts_by(filter_type, keyword, p_times)
+        status, chitts = cass.chitts_by(filter_type, keyword, p_times, last_chitt_ubound)
 
         return format_response(next_p_time, chitts, status), 200
 

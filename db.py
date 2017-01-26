@@ -379,12 +379,13 @@ class Cassandra(object):
                         'body': r.body,
                         'id': str(r.time),
                         'timestamp': datetime_from_uuid1(r.time).timestamp(),
-                        'likes': r.likes
+                        'likes': r.likes,
+                        'liked': False,
                     })
             else:
                 status = False
         if ubound:
-            ubound_time = datetime_from_uuid1(UUID(ubound))
+            ubound_time = datetime_from_uuid1(UUID(ubound)) 
             chitts2 = list(itertools.dropwhile(lambda x: datetime_from_uuid1(UUID(x['id'])) > ubound_time, chitts))[1:101]
         else:
             chitts2 = chitts[:100]
@@ -492,9 +493,18 @@ class Cassandra(object):
             [time, username])
         async_tasks.count_likes(chitt_author, time_string)
 
-    def likes_by_user(self, username, p_time):
-        return self._execute(self._q_likes_by_user,
-            [username, p_time])
+    def likes_by_user(self, username, p_times):
+        queries = []
+        for p in p_times:
+            queries.append((self._q_likes_by_user, (username ,p)))
+        result = execute_concurrent(self.session, queries)
+
+        likes = []
+        for status, likes_list in result:
+            if status:
+                likes.extend(likes_list)
+
+        return likes
 
     def likes_by_chitt(self, time_string):
         time = UUID(time_string)

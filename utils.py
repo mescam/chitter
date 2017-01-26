@@ -19,19 +19,26 @@ def partition_time(time):
     # return int(time.timestamp() / (3600 * 24 * 7))
     return int(time.timestamp() / (3600))
 
-def jwt_barrier():
-    jwt_data = _decode_jwt_from_request(type='access')
+def jwt_barrier(silent=False):
+    try:
+        jwt_data = _decode_jwt_from_request(type='access')
 
-    if jwt_data['type'] != 'access':
-        raise WrongTokenError('Only access tokens can access this endpoint')
+        if jwt_data['type'] != 'access':
+            raise WrongTokenError('Only access tokens can access this endpoint')
 
-    blacklist_enabled = get_blacklist_enabled()
-    if blacklist_enabled:
-        check_if_token_revoked(jwt_data)
+        blacklist_enabled = get_blacklist_enabled()
+        if blacklist_enabled:
+            check_if_token_revoked(jwt_data)
 
-    ctx_stack.top.jwt_identity = jwt_data['identity']
-    ctx_stack.top.jwt_user_claims = jwt_data['user_claims']
-    ctx_stack.top.jwt = jwt_data
+        ctx_stack.top.jwt_identity = jwt_data['identity']
+        ctx_stack.top.jwt_user_claims = jwt_data['user_claims']
+        ctx_stack.top.jwt = jwt_data
+        return True
+    except Exception as e:
+        if not silent:
+            raise e
+        else:
+            return False
 
 if __name__ == '__main__':
     import sys

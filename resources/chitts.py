@@ -51,15 +51,23 @@ class Chitts(Resource):
         keyword = request.args.get('keyword') or ''
         last_chitt_ubound = request.args.get('last_chitt_ubound', None)
 
+        if jwt_barrier(True):
+            username = get_jwt_identity()
+        else:
+            username = None
+
         if filter_type == 'follower':
-            jwt_barrier()
-            keyword = get_jwt_identity()
+            if username:
+                keyword = username
+            else:
+                return {}, 403
 
         p_times, next_p_time = get_p_times(
                 filter_type,
                 keyword,
                 int(upper_bound)
-            )        
+            )
+
         status, chitts, npt = cass.chitts_by(filter_type, 
                                              keyword,
                                              p_times, 
@@ -67,6 +75,15 @@ class Chitts(Resource):
         if npt:
             next_p_time = npt
 
+        if username:
+            likes = list(cass.likes_by_user(username, p_times))
+            i, j = 0, 0
+            for i in range(len(chitts)):
+                if chitts[i]['id'] == str(likes[j].time):
+                    chitts[i]['liked'] = True
+                    j += 1
+                    if j == len(likes):
+                        break
 
         return format_response(next_p_time, chitts, status), 200
 
@@ -81,7 +98,7 @@ class Chitts(Resource):
 
         cass.chitt_add(
             get_jwt_identity(),
-            bleach.clean(body)
+            body
         )
         return {}, 200
 

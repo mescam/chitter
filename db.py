@@ -384,11 +384,17 @@ class Cassandra(object):
             else:
                 status = False
         if ubound:
-            chitts = list(itertools.dropwhile(lambda x: datetime_from_uuid1(UUID(x['id'])) > datetime_from_uuid1(UUID(ubound)), chitts))[1:101]
+            ubound_time = datetime_from_uuid1(UUID(ubound))
+            chitts2 = list(itertools.dropwhile(lambda x: datetime_from_uuid1(UUID(x['id'])) > ubound_time, chitts))[1:101]
         else:
-            chitts = chitts[:100]
+            chitts2 = chitts[:100]
 
-        return status, chitts
+        if len(chitts) > len(chitts2):
+            next_p_time = partition_time(datetime.fromtimestamp(int(chitts[101]['timestamp'])))
+        else:
+            next_p_time = None
+
+        return status, chitts2, next_p_time
 
     def chitt_exists(self, username, timeuuid):
         #print(self.redis.get("chitter:chitt:%s:%s" % (username, timeuuid)))

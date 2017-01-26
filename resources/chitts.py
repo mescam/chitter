@@ -60,7 +60,13 @@ class Chitts(Resource):
                 keyword,
                 int(upper_bound)
             )        
-        status, chitts = cass.chitts_by(filter_type, keyword, p_times, last_chitt_ubound)
+        status, chitts, npt = cass.chitts_by(filter_type, 
+                                             keyword,
+                                             p_times, 
+                                             last_chitt_ubound)
+        if npt:
+            next_p_time = npt
+
 
         return format_response(next_p_time, chitts, status), 200
 

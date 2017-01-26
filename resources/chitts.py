@@ -77,13 +77,14 @@ class Chitts(Resource):
 
         if username:
             likes = list(cass.likes_by_user(username, p_times))
-            i, j = 0, 0
-            for i in range(len(chitts)):
-                if chitts[i]['id'] == str(likes[j].time):
-                    chitts[i]['liked'] = True
-                    j += 1
-                    if j == len(likes):
-                        break
+            if likes:
+                i, j = 0, 0
+                for i in range(len(chitts)):
+                    if chitts[i]['id'] == str(likes[j].time):
+                        chitts[i]['liked'] = True
+                        j += 1
+                        if j == len(likes):
+                            break
 
         return format_response(next_p_time, chitts, status), 200
 
